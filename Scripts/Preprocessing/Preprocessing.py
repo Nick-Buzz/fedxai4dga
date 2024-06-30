@@ -10,7 +10,8 @@ paper_families = ["bamital", "conficker", "cryptolocker", "matsnu", "suppobox", 
 families = ["tranco", "bamital", "banjori", "bedep", "chinad", "conficker", "corebot", "cryptolocker", "dnschanger", "dyre", "emotet", "gameover", "gozi", "locky", "matsnu", "monerominer", "murofet", "murofetweekly", "mydoom", "necurs", "nymaim2", "nymaim", "oderoor", "padcrypt", "pandabanker", "pitou", "proslikefan", "pushdo", "pykspa", "qadars", "qakbot", "qsnatch", "ramnit", "ranbyus", "rovnix", "sisron", "sphinx", "suppobox", "sutra", "symmi", "tinba", "tinynuke", "torpig", "urlzone", "vidro", "virut", "wd"]
 
 # Dataset to load
-filename = "/content/drive/MyDrive/Netmode/fedxai4dga/labeled_dataset_features.csv"
+# filename = "/content/drive/MyDrive/Netmode/fedxai4dga/\
+# labeled_dataset_features.csv"
 
 # True to print debugging outputs, False to silence the program
 DEBUG = True
@@ -31,7 +32,7 @@ CORRELATION_THRESHOLD = 0.9
 def load_dataset(filename):
     # Load the dataset in the form of a csv
     df = pd.read_csv(filename)
-    headers = pd.read_csv(filename, index_col = False, nrows = 0).columns.tolist()
+    headers = pd.read_csv(filename, index_col=False, nrows=0).columns.tolist()
     features = headers[0:-3]
 
     # Return a dataframe and the names of the features
