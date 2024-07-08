@@ -1,28 +1,28 @@
 # Import the necessary libraries (tested for Python 3.9)
+import shap
 import tensorflow as tf
 from Scripts.Preprocessing.Preprocessing import *
 from Scripts.Plots.Plotting import *
-from Models import *
-from Scripts.evaluate_model import evaluate_model
 
+from Scripts.evaluate_model import evaluate_model
 from Scripts.evaluate_model_on_family import evaluate_model_on_family
 from Scripts.train_model import train_model
 from Scripts.utils import calculate_and_explain_shap
 
-tf.compat.v1.disable_v2_behavior()
-
 # True to print debugging outputs, False to silence the program
 DEBUG = True
 separator = "-------------------------------------------------------------------------"
+
 # Define the number of clusters that will represent the training dataset for SHAP framework (cannot give all training
 # samples)
 K_MEANS_CLUSTERS = 100
+
 # Define the number of testing samples on which SHAP will derive interpretations
 SAMPLES_NUMBER = 300
+
 # Correlation threshold for Pearson correlation. For feature pairs with correlation higher than the threshold,
 # one feature is dropped
 CORRELATION_THRESHOLD = 0.9
-
 
 # Families mainly discussed within the paper
 paper_families = ["bamital", "conficker", "cryptolocker", "matsnu", "suppobox", "all_DGAs"]
@@ -31,10 +31,13 @@ paper_families = ["bamital", "conficker", "cryptolocker", "matsnu", "suppobox", 
 families = ["tranco", "bamital", "banjori", "bedep", "chinad", "conficker", "corebot", "cryptolocker", "dnschanger", "dyre", "emotet", "gameover", "gozi", "locky", "matsnu", "monerominer", "murofet", "murofetweekly", "mydoom", "necurs", "nymaim2", "nymaim", "oderoor", "padcrypt", "pandabanker", "pitou", "proslikefan", "pushdo", "pykspa", "qadars", "qakbot", "qsnatch", "ramnit", "ranbyus", "rovnix", "sisron", "sphinx", "suppobox", "sutra", "symmi", "tinba", "tinynuke", "torpig", "urlzone", "vidro", "virut", "wd"]
 
 # Dataset to load
-filename = "/content/drive/MyDrive/Netmode/fedxai4dga/labeled_dataset_features.csv"
 base_path = r"C:\Users\nbazo\Desktop\Netmode\fedxai4dga\fedxai4dga"
+filename = base_path + r"\Data\Processed\labeled_dataset_features.csv"
+
 
 if __name__ == "__main__":
+
+    """
     # Load the dataset
     df, features = load_dataset(filename)
 
@@ -114,10 +117,24 @@ if __name__ == "__main__":
         print("Size of oversampled y_train:")
         print(len(y_train))
         print(separator)
+    """
 
-    # sys.exit(1)
+    # ----------------------------------------------------------------------------------load train data
+    train_filename = base_path + r'\Data\Processed\train_data.csv'
+    train_data, features = load_dataset(train_filename)
+    # train_data = train_data.sample(frac=0.2)
+    X_train = train_data.iloc[:, :-1]
+    y_train = train_data.iloc[:, -1:]
+    print(X_train.shape)
+    # ----------------------------------------------------------------------------------load test data
+    test_filename = base_path + r'\Data\Processed\test_data.csv'
+    test_data, _ = load_dataset(test_filename)
+    # test_data = test_data.sample(frac=0.2)
+    X_test = test_data.iloc[:, :-3]
+    y_test = test_data.iloc[:, -3:]
+    print(X_test.shape)
 
-    # Split testing dataset into categories based on malware family
+    # ----------------------------------- Split testing dataset into categories based on malware family
     per_category_test = split_testing_dataset_into_categories(X_test, y_test)
 
     # Keeping the names will prove useful for local explainability (force plots)
@@ -156,8 +173,9 @@ if __name__ == "__main__":
 
     # Algorithms to consider for interpretations
     # algorithms = ["xgboost", "mlp"]
-    algorithms = ["mlp", "mlp-attention"]
-
+    # algorithms = ["xgboost", "mlp", "mlp-attention"]
+    # algorithms = ["mlp-attention"]
+    algorithms = ["mlp"]
     # A dictionary to hold trained models
     model_gs = {}
     model_explainer = {}
@@ -178,34 +196,35 @@ if __name__ == "__main__":
 
         # We will derive explanations using the Kernel Explainer
         model_explainer[algorithm] = shap.KernelExplainer(model_gs[algorithm].predict, background)
-
-    os.makedirs("/content/drive/MyDrive/Netmode/fedxai4dga/results/", exist_ok=True)
-
-    # Verify the folder creation
-    if os.path.exists("/content/drive/MyDrive/Netmode/fedxai4dga/results/"):
-        print(f"Folder results/ created successfully!")
-    else:
-        print(f"Failed to create folder results/ ")
-
-    os.makedirs("/content/drive/MyDrive/Netmode/fedxai4dga/results/mlp/", exist_ok=True)
+    result_path = base_path + r"\Results"
+    os.makedirs(result_path, exist_ok=True)
 
     # Verify the folder creation
-    if os.path.exists("/content/drive/MyDrive/Netmode/fedxai4dga/results/mlp/"):
-        print(f"Folder results/ mlp/ created successfully!")
+    if os.path.exists(result_path):
+        print(f"Folder Results/ created successfully!")
     else:
-        print(f"Failed to create folder results/ mlp/ ")
+        print(f"Failed to create folder Results/ ")
 
-    algorithm = "mlp-attention"
+    for algorithm in algorithms:
+        os.makedirs(base_path+f"/Results/{algorithm}/", exist_ok=True)
+
+        # Verify the folder creation
+        if os.path.exists(base_path+f"/Results/{algorithm}/"):
+            print(f"Folder Results/ mlp/ created successfully!")
+        else:
+            print(f"Failed to create folder Results/ mlp/ ")
+
+    algorithm = "mlp"
 
     for fam in paper_families:
         calculate_and_explain_shap(
              family=fam,
              algorithm=algorithm,
-             model_gs=model_gs[algorithm],
+             model_gs=model_gs,
              model_explainer=model_explainer,
              test_sample=test_sample,
              names_sample=names_sample,
-             base_path="/content/drive/MyDrive/Netmode/fedxai4dga"
+             base_path=base_path
         )
 
     for algorithm in algorithms:
@@ -214,7 +233,7 @@ if __name__ == "__main__":
                     algorithm.startswith("mlp") and family in paper_families):
                 continue
 
-            path = "/content/drive/MyDrive/Netmode/fedxai4dga/results/" + str(algorithm) + "/" + str(family)
+            path = base_path+"/Results/" + str(algorithm) + "/" + str(family)
             os.makedirs(path, exist_ok=True)
 
             print("Calculating SHAP values for family: ", family)
