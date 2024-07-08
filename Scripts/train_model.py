@@ -21,6 +21,8 @@ def train_model(X_train, y_train, algorithm):
     else:
         model.build()
 
+    # If you want to specify parameters on training go to fit function
+    # on each model
     model.fit(X_train, y_train)
 
     # For XGBoost, the model is directly stored in the class

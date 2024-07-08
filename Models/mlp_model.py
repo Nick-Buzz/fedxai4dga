@@ -1,5 +1,5 @@
 import tensorflow as tf
-from model_base import ModelBase
+from .ModelBase import ModelBase
 
 
 class MLPModel(ModelBase):
@@ -20,4 +20,4 @@ class MLPModel(ModelBase):
 
     def fit(self, X_train, y_train):
         early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, verbose=1)
-        self.model.fit(X_train, y_train, validation_split=0.2, epochs=100, batch_size=512, callbacks=[early_stopping])
+        self.model.fit(X_train, y_train, validation_split=0.2, epochs=10, batch_size=512, callbacks=[early_stopping])

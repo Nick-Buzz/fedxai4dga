@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras.layers import Input, Dense, Dropout, MultiHeadAttention, Concatenate
 from tensorflow.keras.models import Model
-from model_base import ModelBase
+from .ModelBase import ModelBase
 
 
 class MLPAttentionModel(ModelBase):

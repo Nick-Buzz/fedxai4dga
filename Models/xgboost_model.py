@@ -1,6 +1,6 @@
 import numpy as np
 import xgboost as xgb
-from model_base import ModelBase
+from .ModelBase import ModelBase
 
 
 class XGBoostModel(ModelBase):
