@@ -1,14 +1,9 @@
 # Import the necessary libraries (tested for Python 3.9)
 import os
-import numpy as np
-import pandas as pd
-import tensorflow as tf
-from tensorflow.python.keras import Sequential
-import seaborn as sns
+
 import matplotlib.pyplot as plt
-from matplotlib.pyplot import figure
-from pdpbox import pdp, info_plots
 import shap
+from pdpbox import pdp
 
 # True to print debugging outputs, False to silence the program
 DEBUG = True
@@ -34,19 +29,19 @@ def plot_1d_pdp(model, family, family_data, feature_to_plot, features, algorithm
     feature_to_plot = str(feature_to_plot)
     pdp_dist = pdp.pdp_isolate(model=model, dataset= family_data, model_features = features, feature = feature_to_plot)
     pdp.pdp_plot(pdp_dist, feature_to_plot)
-    name = "./results/pdp-" + str(family) + "-" + str(feature_to_plot) + "-original" + str(algorithm) + ".png"
+    name = "./Results/pdp-" + str(family) + "-" + str(feature_to_plot) + "-original" + str(algorithm) + ".png"
     plt.savefig(name)
     plt.close("all")
 
     plt.xlim(0, 1)
     plt.ylim(-1, 1)
-    name = "./results/pdp-" + str(family) + "-" + str(feature_to_plot) + "-xlim01-ylim-11" + str(algorithm) + ".png"
+    name = "./Results/pdp-" + str(family) + "-" + str(feature_to_plot) + "-xlim01-ylim-11" + str(algorithm) + ".png"
     plt.savefig(name)
     plt.close("all")
 
     plt.xlim(0, 1)
     plt.ylim(-1, 0)
-    name = "./results/pdp-" + str(family) + "-" + str(feature_to_plot) + "-xlim01-ylim-10" + str(algorithm) + ".png"
+    name = "./Results/pdp-" + str(family) + "-" + str(feature_to_plot) + "-xlim01-ylim-10" + str(algorithm) + ".png"
     plt.savefig(name)
     plt.close("all")
     return None
@@ -55,9 +50,9 @@ def plot_1d_pdp(model, family, family_data, feature_to_plot, features, algorithm
 def plot_2d_pdp(model, family, family_data, feature1, feature2, features, algorithm):
     # Plot 2D Partial Dependency Plots (No SHAP)
     features_to_plot = [str(feature1), str(feature2)]
-    inter1 = pdp.pdp_interact(model = model, dataset=family_data, model_features= features, features = features_to_plot)
-    pdp.pdp_interact_plot (pdp_interact_out=inter1, feature_names=features_to_plot)
-    name = "./results/2dpdp-" + str(family) + "-" + str(feature1) + "-" + str(feature2) + "-" + str(algorithm) + ".png"
+    inter1 = pdp.pdp_interact(model=model, dataset=family_data, model_features=features, features=features_to_plot)
+    pdp.pdp_interact_plot(pdp_interact_out=inter1, feature_names=features_to_plot)
+    name = "./Results/2dpdp-" + str(family) + "-" + str(feature1) + "-" + str(feature2) + "-" + str(algorithm) + ".png"
     plt.savefig(name)
     plt.close("all")
     return None
@@ -65,7 +60,7 @@ def plot_2d_pdp(model, family, family_data, feature1, feature2, features, algori
 
 def explain_with_shap_summary_plots(model, model_shap_values, family, test_sample, algorithm):
     # Plot bar summary plot using SHAP values
-    prepend_path = "/content/drive/MyDrive/Netmode/fedxai4dga/results/" + str(algorithm) + "/" + str(family) + "/summary-plots/"
+    prepend_path = r"C:\Users\nbazo\Desktop\Netmode\fedxai4dga\fedxai4dga\Results" + "/" + str(algorithm) + "/" + str(family) + "/summary-plots/"
     os.makedirs(prepend_path, exist_ok=True)
 
     fig = plt.clf()
@@ -95,7 +90,7 @@ def explain_with_shap_summary_plots(model, model_shap_values, family, test_sampl
 def explain_with_shap_dependence_plots(model, model_shap_values, family, test_sample, feature1, feature2, feature3,
                                        feature4, feature5, feature6, feature7, feature8, feature9, algorithm):
     # Plot dependence plot using SHAP values for multiple features
-    prepend_path = "/content/drive/MyDrive/Netmode/fedxai4dga/results/" + str(algorithm) + "/" + str(
+    prepend_path = r"C:\Users\nbazo\Desktop\Netmode\fedxai4dga\fedxai4dga\Results" +"/"+ str(algorithm) + "/" + str(
         family) + "/dependence-plots/"
     os.makedirs(prepend_path, exist_ok=True)
 
@@ -159,7 +154,7 @@ def explain_with_shap_dependence_plots(model, model_shap_values, family, test_sa
 def explain_with_force_plots(model, model_shap_values, family, test_sample, names_sample, algorithm,
                              model_explainer):
     # Plot force plots using SHAP values (local explanations)
-    prepend_path = "/content/drive/MyDrive/Netmode/fedxai4dga/results/" + str(algorithm) + "/" + str(
+    prepend_path = r"C:\Users\nbazo\Desktop\Netmode\fedxai4dga\fedxai4dga\Results" + "/" + str(algorithm) + "/" + str(
         family) + "/force-plots/"
     os.makedirs(prepend_path, exist_ok=True)
 

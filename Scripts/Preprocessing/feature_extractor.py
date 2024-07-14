@@ -4,9 +4,11 @@ import wordninja
 from math import log
 import math
 
+
 def find_length(name):
     length = len(name)
     return length
+
 
 def find_max_digit_sequence(name):
     digits = "0123456789"
@@ -22,6 +24,7 @@ def find_max_digit_sequence(name):
     if current_digit_sequence > max_digit_sequence:
         max_digit_sequence = current_digit_sequence
     return max_digit_sequence
+
 
 def find_max_string_sequence(name):
     chars = "abcdefghijklmnopqrstuvwxyz"

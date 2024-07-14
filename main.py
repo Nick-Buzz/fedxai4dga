@@ -25,10 +25,15 @@ SAMPLES_NUMBER = 300
 CORRELATION_THRESHOLD = 0.9
 
 # Families mainly discussed within the paper
-paper_families = ["bamital", "conficker", "cryptolocker", "matsnu", "suppobox", "all_DGAs"]
+# paper_families = ["bamital", "conficker", "cryptolocker", "matsnu", "suppobox", "all_DGAs"]
+paper_families = ["matsnu", "suppobox", "all_DGAs"]
 
 # Families considered for SHAP interpretations
-families = ["tranco", "bamital", "banjori", "bedep", "chinad", "conficker", "corebot", "cryptolocker", "dnschanger", "dyre", "emotet", "gameover", "gozi", "locky", "matsnu", "monerominer", "murofet", "murofetweekly", "mydoom", "necurs", "nymaim2", "nymaim", "oderoor", "padcrypt", "pandabanker", "pitou", "proslikefan", "pushdo", "pykspa", "qadars", "qakbot", "qsnatch", "ramnit", "ranbyus", "rovnix", "sisron", "sphinx", "suppobox", "sutra", "symmi", "tinba", "tinynuke", "torpig", "urlzone", "vidro", "virut", "wd"]
+families = ["tranco", "bamital", "banjori", "bedep", "chinad", "conficker", "corebot", "cryptolocker", "dnschanger",
+            "dyre", "emotet", "gameover", "gozi", "locky", "matsnu", "monerominer", "murofet", "murofetweekly",
+            "mydoom", "necurs", "nymaim2", "nymaim", "oderoor", "padcrypt", "pandabanker", "pitou", "proslikefan",
+            "pushdo", "pykspa", "qadars", "qakbot", "qsnatch", "ramnit", "ranbyus", "rovnix", "sisron", "sphinx",
+            "suppobox", "sutra", "symmi", "tinba", "tinynuke", "torpig", "urlzone", "vidro", "virut", "wd"]
 
 # Dataset to load
 base_path = r"C:\Users\nbazo\Desktop\Netmode\fedxai4dga\fedxai4dga"
@@ -217,50 +222,78 @@ if __name__ == "__main__":
     algorithm = "mlp"
 
     for fam in paper_families:
-        calculate_and_explain_shap(
-             family=fam,
-             algorithm=algorithm,
-             model_gs=model_gs,
-             model_explainer=model_explainer,
-             test_sample=test_sample,
-             names_sample=names_sample,
-             base_path=base_path
-        )
+        try:
+            calculate_and_explain_shap(
+                family=fam,
+                algorithm=algorithm,
+                model_gs=model_gs,
+                model_explainer=model_explainer,
+                test_sample=test_sample,
+                names_sample=names_sample,
+                base_path=base_path
+            )
+        except KeyError as e:
+            # Handle the KeyError exception
+            print(f"KeyError: {e} for family: {fam}")
+            # You can log the error or handle it as needed
+            # Continue with the next iteration
+            continue
+
+        except Exception as e:
+            # Optionally handle other exceptions
+            print(f"An error occurred: {e} for family: {fam}")
+            # Continue with the next iteration
+            continue
 
     for algorithm in algorithms:
         for family in per_category_test.keys():
-            if (algorithm == "xgboost" and (family == "all_DGAs" or family == "tranco")) or (
-                    algorithm.startswith("mlp") and family in paper_families):
+            try:
+                if (algorithm == "xgboost" and (family == "all_DGAs" or family == "tranco")) or (
+                        algorithm.startswith("mlp") and family in paper_families):
+                    continue
+
+                path = base_path+"/Results/" + str(algorithm) + "/" + str(family)
+                os.makedirs(path, exist_ok=True)
+
+                print("Calculating SHAP values for family: ", family)
+                # Calculate SHAP values on specific malware family
+                model_shap_values = model_explainer[algorithm].shap_values(test_sample[family])
+                if algorithm == "mlp":
+                    # Required changes for MLP's
+                    model_shap_values = np.asarray(model_shap_values)
+                    model_shap_values = model_shap_values[0]
+                else:
+                    model_shap_values = np.asarray(model_shap_values)
+                    model_shap_values = model_shap_values[0]
+
+                if DEBUG:
+                    print("Model SHAP values:")
+                    print(model_shap_values)
+                    print(separator)
+                    print("Shape of model SHAP values:")
+                    print(model_shap_values.shape)
+                    print(separator)
+
+                # Global explainability
+                explain_with_shap_summary_plots(model_gs[algorithm], model_shap_values, family, test_sample[family],
+                                                algorithm)
+                explain_with_shap_dependence_plots(model_gs[algorithm], model_shap_values, family, test_sample[family],
+                                                   "Reputation", "Length", "Words_Mean",
+                                                   "Max_Let_Seq", "Words_Freq",
+                                                   "Vowel_Freq", "Entropy", "DeciDig_Freq",
+                                                   "Max_DeciDig_Seq", algorithm)
+                # Local explainability
+                explain_with_force_plots(model_gs[algorithm], model_shap_values, family, test_sample[family],
+                                         names_sample[family], algorithm, model_explainer[algorithm])
+            except KeyError as e:
+                # Handle the KeyError exception
+                print(f"KeyError: {e} for family: {family}")
+                # You can log the error or handle it as needed
+                # Continue with the next iteration
                 continue
 
-            path = base_path+"/Results/" + str(algorithm) + "/" + str(family)
-            os.makedirs(path, exist_ok=True)
-
-            print("Calculating SHAP values for family: ", family)
-            # Calculate SHAP values on specific malware family
-            model_shap_values = model_explainer[algorithm].shap_values(test_sample[family])
-            if algorithm == "mlp":
-                # Required changes for MLP's
-                model_shap_values = np.asarray(model_shap_values)
-                model_shap_values = model_shap_values[:, :, 0]
-            else:
-                model_shap_values = np.asarray(model_shap_values)
-                model_shap_values = model_shap_values[:, :, 0]
-
-            if DEBUG:
-                print("Model SHAP values:")
-                print(model_shap_values)
-                print(separator)
-                print("Shape of model SHAP values:")
-                print(model_shap_values.shape)
-                print(separator)
-
-            # Global explainability
-            explain_with_shap_summary_plots(model_gs[algorithm], model_shap_values, family, test_sample[family],
-                                            algorithm)
-            explain_with_shap_dependence_plots(model_gs[algorithm], model_shap_values, family, test_sample[family],
-                                               "Reputation", "Length", "Words_Mean", "Max_Let_Seq", "Words_Freq",
-                                               "Vowel_Freq", "Entropy", "DeciDig_Freq", "Max_DeciDig_Seq", algorithm)
-            # Local explainability
-            explain_with_force_plots(model_gs[algorithm], model_shap_values, family, test_sample[family],
-                                     names_sample[family], algorithm, model_explainer[algorithm])
+            except Exception as e:
+                # Optionally handle other exceptions
+                print(f"An error occurred: {e} for family: {family}")
+                # Continue with the next iteration
+                continue

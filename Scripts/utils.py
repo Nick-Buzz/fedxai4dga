@@ -15,7 +15,9 @@ def calculate_and_explain_shap(family, algorithm, model_gs, model_explainer, tes
     # Calculate SHAP values
     model_shap_values = model_explainer[algorithm].shap_values(test_sample[family])
     model_shap_values = np.asarray(model_shap_values)
-    model_shap_values = model_shap_values[:, :, 0]
+    model_shap_values = model_shap_values[0]
+    print(model_shap_values.shape)
+    print(test_sample[family].shape)
 
     # Generate explanations
     explain_with_shap_summary_plots(model_gs[algorithm],
