@@ -1,12 +1,16 @@
 # Import the necessary libraries (tested for Python 3.8)
+import json
+import logging
 import os
+from datetime import datetime
+import tensorflow as tf
 import numpy as np
 import pandas as pd
-from sklearn import ensemble
-import xgboost as xgb
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-import tensorflow as tf
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix, \
+    classification_report, make_scorer
+from sklearn.model_selection import cross_val_score
+
+from Models.mlp_model import MLPModel
 
 # True to print debugging outputs, False to silence the program
 DEBUG = True
@@ -32,39 +36,129 @@ families = ["tranco", "bamital", "banjori", "bedep", "chinad", "conficker", "cor
             "suppobox", "sutra", "symmi", "tinba", "tinynuke", "torpig", "urlzone", "vidro", "virut", "wd"]
 
 
-def evaluate_model(model, X_test, y_test, algorithm):
-    # Make predictions on the testing dataset
-    if algorithm == "xgboost":
-        predictions = model.predict(X_test)
+def evaluate_model(model,X_train, y_train,  X_test, y_test, algorithm, metrics=None, cv=None, save_path=None):
+    logger = logging.getLogger(__name__)
+    logger.info(f"Evaluating {algorithm} model")
+    try:
+        if algorithm in ["xgboost", "mlp", "mlp-attention"]:
+            if algorithm == "xgboost":
+                predictions = model.predict(X_test)
+            else:
+                predictions = model.predict(X_test).round()
 
-        # Print the different testing scores
-        print("Algorithm: ", str(algorithm))
-        print("Accuracy: ", accuracy_score(y_test["Label"].values, predictions, normalize=True))
-        print("Precision None: ", precision_score(y_test["Label"].values, predictions, average=None))
-        print("Recall None: ", recall_score(y_test["Label"].values, predictions, average=None))
-        print("F1 score None: ", f1_score(y_test["Label"].values, predictions, average=None))
-        print(separator)
-    elif algorithm == "mlp":
-        # Print a summary of the MLP architecture
-        print(model.summary())
-        print(separator)
-        # We need only the binary labels, not the domain name and the malware family
-        y_test_temp = y_test.iloc[:, 1]
-        score = model.evaluate(X_test, y_test_temp, verbose=1)
-        print(score[0])
-        print(score[1])
-        print(separator)
-    elif algorithm == "mlp-attention":
-        # Print a summary of the MLP architecture
-        print(model.summary())
-        print(separator)
-        # We need only the binary labels, not the domain name and the malware family
-        y_test_temp = y_test.iloc[:, 1]
-        score = model.evaluate(X_test, y_test_temp, verbose=1)
-        print(score[0])
-        print(score[1])
-        print(separator)
-    else:
-        print("Not Valid algorithm provided")
+            y_true = y_test["Label"].values if algorithm == "xgboost" else y_test.iloc[:, 1].values
 
-    return None
+            results = {}
+            if metrics is None:
+                metrics = ["accuracy", "precision", "recall", "f1", "roc_auc"]
+
+            print(f"\nEvaluation results for {algorithm}:")
+            for metric in metrics:
+                if metric == "accuracy":
+                    results["accuracy"] = accuracy_score(y_true, predictions)
+                    print(f"Accuracy: {results['accuracy']:.4f}")
+                elif metric == "precision":
+                    results["precision"] = precision_score(y_true, predictions, average='weighted')
+                    print(f"Precision: {results['precision']:.4f}")
+                elif metric == "recall":
+                    results["recall"] = recall_score(y_true, predictions, average='weighted')
+                    print(f"Recall: {results['recall']:.4f}")
+                elif metric == "f1":
+                    results["f1"] = f1_score(y_true, predictions, average='weighted')
+                    print(f"F1 Score: {results['f1']:.4f}")
+                elif metric == "roc_auc":
+                    results["roc_auc"] = roc_auc_score(y_true, predictions)
+                    print(f"ROC AUC: {results['roc_auc']:.4f}")
+
+            results["confusion_matrix"] = confusion_matrix(y_true, predictions)
+            print("\nConfusion Matrix:")
+            print(results["confusion_matrix"])
+
+            results["classification_report"] = classification_report(y_true, predictions)
+            print("\nClassification Report:")
+            print(results["classification_report"])
+
+            # Merge X_train and X_test
+            X = pd.concat([X_train, X_test], axis=0, ignore_index=True)
+
+            # Merge y_train and y_test[1]
+            # Assuming y_test is a DataFrame and we want the second column
+            y = pd.concat([y_train, y_test.iloc[:, 1]], axis=0, ignore_index=True)
+            y = y.iloc[:, 0]
+
+            if cv:
+                if isinstance(model, tf.keras.Model):
+                    # If a Keras model was passed, wrap it in MLPModel
+                    wrapped_model = MLPModel()
+                    wrapped_model.model = model
+                    model = wrapped_model
+
+                cv_scores = cross_val_score(model, X, y, cv=cv)
+
+                results["cross_val_scores"] = cv_scores
+                results["cross_val_mean"] = np.mean(cv_scores)
+                results["cross_val_std"] = np.std(cv_scores)
+
+                print(f"\nCross-validation scores: {cv_scores}")
+                print(f"Mean CV score: {results['cross_val_mean']:.4f} (+/- {results['cross_val_std']:.4f})")
+
+            if save_path:
+                try:
+                    # Create a filename with timestamp
+                    timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+                    filename = f"{algorithm}_evaluation_{timestamp}.json"
+                    full_path = os.path.join(save_path, filename)
+
+                    # Convert numpy arrays to lists for JSON serialization
+                    serializable_results = {}
+                    for key, value in results.items():
+                        if isinstance(value, np.ndarray):
+                            serializable_results[key] = value.tolist()
+                        elif isinstance(value, np.float64):
+                            serializable_results[key] = float(value)
+                        else:
+                            serializable_results[key] = value
+
+                    # Save the results to a JSON file
+                    with open(full_path, 'w') as f:
+                        json.dump(serializable_results, f, indent=4)
+
+                    logger.info(f"Evaluation report saved to {full_path}")
+                    print(f"\nEvaluation report saved to {full_path}")
+                except Exception as e:
+                    logger.error(f"Error saving report: {str(e)}")
+                    print(f"\nError saving report: {str(e)}")
+
+            return results
+        else:
+            raise ValueError("Not a valid algorithm provided")
+
+    except Exception as e:
+        logger.error(f"Error during evaluation: {str(e)}")
+        print(f"\nError during evaluation: {str(e)}")
+        return None
+
+
+# # Basic usage
+# results = evaluate_model(model, X_test, y_test, algorithm="xgboost")
+#
+# # With custom metrics
+# custom_metrics = ["accuracy", "precision", "recall"]
+# results = evaluate_model(model, X_test, y_test, algorithm="mlp", metrics=custom_metrics)
+#
+# # With cross-validation
+# results = evaluate_model(model, X_test, y_test, algorithm="mlp-attention", cv=5)
+#
+# # Saving the report
+# results = evaluate_model(model, X_test, y_test, algorithm="xgboost", save_path="/path/to/save/directory")
+#
+# # Full example with all options
+# results = evaluate_model(
+#     model=your_model,
+#     X_test=X_test,
+#     y_test=y_test,
+#     algorithm="xgboost",
+#     metrics=["accuracy", "precision", "recall", "f1", "roc_auc"],
+#     cv=5,
+#     save_path="/path/to/save/directory"
+# )

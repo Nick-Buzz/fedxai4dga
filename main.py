@@ -1,9 +1,8 @@
-# Import the necessary libraries (tested for Python 3.9)
-import shap
-import tensorflow as tf
-from Scripts.Preprocessing.Preprocessing import *
-from Scripts.Plots.Plotting import *
+# Import the necessary libraries (tested for Python 3.10)
+import os.path
 
+from Scripts.Plots.Plotting import *
+from Scripts.Preprocessing.Preprocessing import *
 from Scripts.evaluate_model import evaluate_model
 from Scripts.evaluate_model_on_family import evaluate_model_on_family
 from Scripts.train_model import train_model
@@ -25,8 +24,8 @@ SAMPLES_NUMBER = 300
 CORRELATION_THRESHOLD = 0.9
 
 # Families mainly discussed within the paper
-# paper_families = ["bamital", "conficker", "cryptolocker", "matsnu", "suppobox", "all_DGAs"]
-paper_families = ["matsnu", "suppobox", "all_DGAs"]
+paper_families = ["bamital", "conficker", "cryptolocker", "matsnu", "suppobox", "all_DGAs"]
+#paper_families = ["matsnu", "suppobox", "all_DGAs"]
 
 # Families considered for SHAP interpretations
 families = ["tranco", "bamital", "banjori", "bedep", "chinad", "conficker", "corebot", "cryptolocker", "dnschanger",
@@ -169,7 +168,7 @@ if __name__ == "__main__":
 
     # SHAP will run forever if you give the entire the training dataset.
     # We use k-means to reduce the training dataset into specific centroids
-    background = shap.kmeans(X_train, K_MEANS_CLUSTERS)
+    # background = shap.kmeans(X_train, K_MEANS_CLUSTERS)
 
     if DEBUG:
         print("Number of k-means clusters:")
@@ -180,46 +179,60 @@ if __name__ == "__main__":
     # algorithms = ["xgboost", "mlp"]
     # algorithms = ["xgboost", "mlp", "mlp-attention"]
     # algorithms = ["mlp-attention"]
-    algorithms = ["mlp"]
+    algorithms = ["mlp-attention"]
+
     # A dictionary to hold trained models
     model_gs = {}
     model_explainer = {}
 
-    for algorithm in algorithms:
-        if DEBUG:
-            print("Execution for algorithm: ", algorithm)
-
-        # Train the machine/deep learning model
-        model_temp = train_model(X_train, y_train, algorithm)
-        model_gs[algorithm] = model_temp
-        # Evaluate the machine/deep learning model
-        evaluate_model(model_gs[algorithm], X_test, y_test, algorithm)
-
-        for family in per_category_test.keys():
-            # Get accuracy calculations on testing dataset per malware family
-            evaluate_model_on_family(model_gs[algorithm], family, test_sample[family], algorithm)
-
-        # We will derive explanations using the Kernel Explainer
-        model_explainer[algorithm] = shap.KernelExplainer(model_gs[algorithm].predict, background)
     result_path = base_path + r"\Results"
     os.makedirs(result_path, exist_ok=True)
 
-    # Verify the folder creation
     if os.path.exists(result_path):
         print(f"Folder Results/ created successfully!")
     else:
         print(f"Failed to create folder Results/ ")
 
     for algorithm in algorithms:
-        os.makedirs(base_path+f"/Results/{algorithm}/", exist_ok=True)
+        if DEBUG:
+            print("Execution for algorithm: \n\n", algorithm)
 
+        os.makedirs(base_path + f"/Results/{algorithm}/", exist_ok=True)
         # Verify the folder creation
-        if os.path.exists(base_path+f"/Results/{algorithm}/"):
-            print(f"Folder Results/ mlp/ created successfully!")
+        if os.path.exists(base_path + f"/Results/{algorithm}/"):
+            print(f"Folder Results/ {algorithm}/ created successfully!")
         else:
-            print(f"Failed to create folder Results/ mlp/ ")
+            print(f"Failed to create folder Results/ {algorithm}/ ")
 
-    algorithm = "mlp"
+        # Train the machine/deep learning model
+        model_temp = train_model(X_train, y_train, algorithm)
+        model_gs[algorithm] = model_temp
+
+        # Evaluate the machine/deep learning model
+
+        results = evaluate_model(
+            model=model_gs[algorithm],
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
+            algorithm=algorithm,
+            metrics=["accuracy", "precision", "recall", "f1", "roc_auc"],
+            cv=5,
+            save_path=base_path + f"/Results/{algorithm}/"
+        )
+        for family in per_category_test.keys():
+            # Get accuracy calculations on testing dataset per malware family
+            evaluate_model_on_family(model_gs[algorithm], family, test_sample[family], algorithm)
+
+        # We will derive explanations using the Kernel Explainer
+        # model_explainer[algorithm] = shap.KernelExplainer(model_gs[algorithm].predict, background)
+
+    """
+    # Verify the folder creation
+
+    
+    algorithm = "mlp-attention"
 
     for fam in paper_families:
         try:
@@ -252,39 +265,15 @@ if __name__ == "__main__":
                         algorithm.startswith("mlp") and family in paper_families):
                     continue
 
-                path = base_path+"/Results/" + str(algorithm) + "/" + str(family)
-                os.makedirs(path, exist_ok=True)
-
-                print("Calculating SHAP values for family: ", family)
-                # Calculate SHAP values on specific malware family
-                model_shap_values = model_explainer[algorithm].shap_values(test_sample[family])
-                if algorithm == "mlp":
-                    # Required changes for MLP's
-                    model_shap_values = np.asarray(model_shap_values)
-                    model_shap_values = model_shap_values[0]
-                else:
-                    model_shap_values = np.asarray(model_shap_values)
-                    model_shap_values = model_shap_values[0]
-
-                if DEBUG:
-                    print("Model SHAP values:")
-                    print(model_shap_values)
-                    print(separator)
-                    print("Shape of model SHAP values:")
-                    print(model_shap_values.shape)
-                    print(separator)
-
-                # Global explainability
-                explain_with_shap_summary_plots(model_gs[algorithm], model_shap_values, family, test_sample[family],
-                                                algorithm)
-                explain_with_shap_dependence_plots(model_gs[algorithm], model_shap_values, family, test_sample[family],
-                                                   "Reputation", "Length", "Words_Mean",
-                                                   "Max_Let_Seq", "Words_Freq",
-                                                   "Vowel_Freq", "Entropy", "DeciDig_Freq",
-                                                   "Max_DeciDig_Seq", algorithm)
-                # Local explainability
-                explain_with_force_plots(model_gs[algorithm], model_shap_values, family, test_sample[family],
-                                         names_sample[family], algorithm, model_explainer[algorithm])
+                calculate_and_explain_shap(
+                    family=family,
+                    algorithm=algorithm,
+                    model_gs=model_gs,
+                    model_explainer=model_explainer,
+                    test_sample=test_sample,
+                    names_sample=names_sample,
+                    base_path=base_path
+                )
             except KeyError as e:
                 # Handle the KeyError exception
                 print(f"KeyError: {e} for family: {family}")
@@ -297,3 +286,4 @@ if __name__ == "__main__":
                 print(f"An error occurred: {e} for family: {family}")
                 # Continue with the next iteration
                 continue
+"""
