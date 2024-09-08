@@ -49,7 +49,7 @@ class MLPAttentionModel(ModelBase):
 
     def fit(self, X, y, **kwargs):
         early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, verbose=1)
-        self.model.fit(X, y, validation_split=0.2, epochs=100, batch_size=512,
+        self.model.fit(X, y, validation_split=0.2, epochs=10, batch_size=512,
                        callbacks=[early_stopping], **kwargs)
 
     def score(self, X, y, sample_weight=None):
@@ -82,4 +82,3 @@ class MLPAttentionModel(ModelBase):
         if 'model_config' in state:
             self.model = tf.keras.models.Sequential.from_config(state['model_config'])
             self.model.set_weights(state['model_weights'])
-

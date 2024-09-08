@@ -36,11 +36,11 @@ families = ["tranco", "bamital", "banjori", "bedep", "chinad", "conficker", "cor
             "suppobox", "sutra", "symmi", "tinba", "tinynuke", "torpig", "urlzone", "vidro", "virut", "wd"]
 
 
-def evaluate_model(model,X_train, y_train,  X_test, y_test, algorithm, metrics=None, cv=None, save_path=None):
+def evaluate_model(model, X_train, y_train,  X_test, y_test, algorithm, metrics=None, cv=None, save_path=None):
     logger = logging.getLogger(__name__)
     logger.info(f"Evaluating {algorithm} model")
     try:
-        if algorithm in ["xgboost", "mlp", "mlp-attention"]:
+        if algorithm in ["xgboost", "mlp", "mlp-attention","mlp-attention2"]:
             if algorithm == "xgboost":
                 predictions = model.predict(X_test)
             else:

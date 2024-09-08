@@ -179,7 +179,7 @@ if __name__ == "__main__":
     # algorithms = ["xgboost", "mlp"]
     # algorithms = ["xgboost", "mlp", "mlp-attention"]
     # algorithms = ["mlp-attention"]
-    algorithms = ["mlp-attention"]
+    algorithms = ["mlp-attention2"]
 
     # A dictionary to hold trained models
     model_gs = {}

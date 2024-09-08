@@ -26,7 +26,7 @@ class MLPModel(BaseEstimator, ClassifierMixin):
         if self.model is None:
             self.build()
         early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, verbose=1)
-        self.model.fit(X, y, validation_split=0.2, epochs=1, batch_size=512,
+        self.model.fit(X, y, validation_split=0.2, epochs=100, batch_size=512,
                        callbacks=[early_stopping], **kwargs)
         return self
 

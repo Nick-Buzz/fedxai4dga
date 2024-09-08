@@ -1,13 +1,15 @@
 from Models.xgboost_model import XGBoostModel
 from Models.mlp_model import MLPModel
 from Models.mlp_attention_model import MLPAttentionModel
+from Models.mlp_attention_model2 import MLPAttentionModel2
 
 
 def train_model(X_train, y_train, algorithm):
     models = {
         "xgboost": XGBoostModel,
         "mlp": MLPModel,
-        "mlp-attention": MLPAttentionModel
+        "mlp-attention": MLPAttentionModel,
+        "mlp-attention2": MLPAttentionModel2
     }
 
     if algorithm not in models:
@@ -16,7 +18,7 @@ def train_model(X_train, y_train, algorithm):
     model = models[algorithm]()
 
     # For MLPAttentionModel, we need to pass features_number
-    if algorithm == "mlp-attention":
+    if "mlp-attention" in algorithm:
         model.build(features_number=X_train.shape[1])
     else:
         model.build()
