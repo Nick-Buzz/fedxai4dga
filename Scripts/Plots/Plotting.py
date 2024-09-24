@@ -190,3 +190,46 @@ def explain_with_force_plots(model, model_shap_values, family, test_sample, name
             break
     return None
 
+
+def plot_training_curves(model,history):
+    """
+    Plots training and validation loss and accuracy curves.
+
+    Parameters:
+    history: The history object returned by model.fit().
+    """
+    # Extract loss and accuracy metrics
+    loss = history.history['loss']
+    val_loss = history.history['val_loss']
+
+    #accuracy = history.history['accuracy']
+    #val_accuracy = history.history['val_accuracy']
+
+    # Create a figure with 2 subplots
+    plt.figure(figsize=(12, 5))
+
+    # Plotting Loss
+    plt.subplot(1, 2, 1)
+    plt.plot(loss, label='Training Loss', color='blue')
+    plt.plot(val_loss, label='Validation Loss', color='orange')
+    plt.title('Loss Curves')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.grid()
+
+    # Plotting Accuracy
+    if "autoencoder" not in model:
+        plt.subplot(1, 2, 2)
+        plt.plot(accuracy, label='Training Accuracy', color='green')
+        plt.plot(val_accuracy, label='Validation Accuracy', color='red')
+        plt.title('Accuracy Curves')
+        plt.xlabel('Epochs')
+        plt.ylabel('Accuracy')
+        plt.legend()
+        plt.grid()
+
+    # Show plots
+    plt.tight_layout()
+    plt.show()
+

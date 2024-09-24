@@ -1,6 +1,6 @@
 import tensorflow as tf
 from sklearn.metrics import accuracy_score
-from tensorflow.keras.layers import Input, Dense, MultiHeadAttention, Concatenate
+from tensorflow.keras.layers import Input, Dense, MultiHeadAttention, Concatenate, Dropout, BatchNormalization
 from tensorflow.keras.models import Model
 
 from .ModelBase import ModelBase
@@ -29,8 +29,15 @@ class MLPAttentionModel2(ModelBase):
 
         # Define the second MLP module
         x = Dense(500, activation=self.activation)(combined)
+        x = BatchNormalization()(x)
+        #x = Dropout(self.dropout_rate)(x)
+
         x = Dense(250, activation=self.activation)(x)
+        x = BatchNormalization()(x)
+        #x = Dropout(self.dropout_rate)(x)
+
         x = Dense(100, activation=self.activation)(x)
+        x = BatchNormalization()(x)
 
         outputs = Dense(1, activation='sigmoid')(x)
 
@@ -40,8 +47,9 @@ class MLPAttentionModel2(ModelBase):
 
     def fit(self, X, y, **kwargs):
         early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, verbose=1)
-        self.model.fit(X, y, validation_split=0.2, epochs=50, batch_size=512,
-                       callbacks=[early_stopping], **kwargs)
+        history = self.model.fit(X, y, validation_split=0.2, epochs=10, batch_size=512,
+                                 callbacks=[early_stopping], **kwargs)
+        return history
 
     def score(self, X, y, sample_weight=None):
 

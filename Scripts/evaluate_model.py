@@ -40,9 +40,12 @@ def evaluate_model(model, X_train, y_train,  X_test, y_test, algorithm, metrics=
     logger = logging.getLogger(__name__)
     logger.info(f"Evaluating {algorithm} model")
     try:
-        if algorithm in ["xgboost", "mlp", "mlp-attention","mlp-attention2"]:
+        if algorithm in ["xgboost", "mlp", "mlp-attention", "mlp-attention2", "autoencoder"]:
             if algorithm == "xgboost":
                 predictions = model.predict(X_test)
+            elif "autoencoder" in algorithm:
+                predictions = model.predict(X_test)
+                predictions = tf.cast(abs(model.loss(X_test, predictions)) > 0.002, tf.int32).numpy()
             else:
                 predictions = model.predict(X_test).round()
 
@@ -51,6 +54,7 @@ def evaluate_model(model, X_train, y_train,  X_test, y_test, algorithm, metrics=
             results = {}
             if metrics is None:
                 metrics = ["accuracy", "precision", "recall", "f1", "roc_auc"]
+
 
             print(f"\nEvaluation results for {algorithm}:")
             for metric in metrics:
@@ -130,6 +134,7 @@ def evaluate_model(model, X_train, y_train,  X_test, y_test, algorithm, metrics=
                     print(f"\nError saving report: {str(e)}")
 
             return results
+
         else:
             raise ValueError("Not a valid algorithm provided")
 
@@ -162,3 +167,4 @@ def evaluate_model(model, X_train, y_train,  X_test, y_test, algorithm, metrics=
 #     cv=5,
 #     save_path="/path/to/save/directory"
 # )
+

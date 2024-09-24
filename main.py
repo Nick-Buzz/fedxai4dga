@@ -126,7 +126,11 @@ if __name__ == "__main__":
     # ----------------------------------------------------------------------------------load train data
     train_filename = base_path + r'\Data\Processed\train_data.csv'
     train_data, features = load_dataset(train_filename)
-    # train_data = train_data.sample(frac=0.2)
+    #train_data = train_data.sample(frac=0.2)
+    # unsupervised-Anomaly Detection
+    # SOS ! to proceed with supervised learning comment out the following line !
+    train_data = train_data[train_data["Label"] == 0]
+    # supervised-Classification
     X_train = train_data.iloc[:, :-1]
     y_train = train_data.iloc[:, -1:]
     print(X_train.shape)
@@ -176,10 +180,8 @@ if __name__ == "__main__":
         print(separator)
 
     # Algorithms to consider for interpretations
-    # algorithms = ["xgboost", "mlp"]
-    # algorithms = ["xgboost", "mlp", "mlp-attention"]
-    # algorithms = ["mlp-attention"]
-    algorithms = ["mlp-attention2"]
+    # algorithms = ["xgboost", "mlp","mlp-attention","mlp-attention2,"autoencoder"]
+    algorithms = ["autoencoder"]
 
     # A dictionary to hold trained models
     model_gs = {}
