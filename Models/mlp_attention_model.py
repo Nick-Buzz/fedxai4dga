@@ -4,6 +4,7 @@ from sklearn.metrics import accuracy_score
 from tensorflow.keras.layers import Input, Dense, MultiHeadAttention, Concatenate, Dropout, BatchNormalization
 from tensorflow.keras.models import Model
 import pandas as pd
+import os
 
 from .ModelBase import ModelBase
 
@@ -106,7 +107,7 @@ class MLPAttentionModel(ModelBase):
             self.model = tf.keras.models.Sequential.from_config(state['model_config'])
             self.model.set_weights(state['model_weights'])
 
-    def tune(self, X, y, algorithm="RandomSearch", epochs=5, export_csv=True, **kwargs):
+    def tune(self, X, y, algorithm="RandomSearch", epochs=50, export_csv=True, **kwargs):
         features_number = X.shape[1]
 
         class MLPAttentionHyperModel(HyperModel):
@@ -166,6 +167,15 @@ class MLPAttentionModel(ModelBase):
                 )
                 return model
 
+            def fit(self, hp, model, *args, **kwargs):
+                # Define batch size as a hyperparameter
+                batch_size = hp.Choice('batch_size', values=[32, 64, 128, 256, 512, 1024])
+
+                # Update kwargs with the batch_size
+                kwargs['batch_size'] = batch_size
+
+                return model.fit(*args, **kwargs)
+
         tuner_classes = {
             "RandomSearch": RandomSearch,
             "Hyperband": Hyperband,
@@ -179,7 +189,7 @@ class MLPAttentionModel(ModelBase):
         tuner_params = {
             "hypermodel": MLPAttentionHyperModel(),
             "objective": 'val_accuracy',
-            "directory": f"{base_path}/Results/mlp_attention/{algorithm}/",
+            "directory": f"{base_path}/Results/mlp-attention/{algorithm}/",
             "project_name": f'mlp_attention_hyperparameter_tuning_{algorithm}',
             **kwargs
         }
@@ -194,16 +204,45 @@ class MLPAttentionModel(ModelBase):
         best_hp = tuner.get_best_hyperparameters(num_trials=1)[0]
 
         if export_csv:
-            trials = tuner.oracle.get_best_trials()
-            results_df = pd.DataFrame([
-                {
-                    'trial': trial.trial_id,
-                    'loss': trial.score,
-                    **trial.hyperparameters.values
+            # Get all trials instead of just the top 5
+            all_trials = tuner.oracle.trials
+
+            # Create a list to store all trial data
+            trial_data = []
+
+            for trial_id, trial in all_trials.items():
+                # Skip trials that didn't complete
+                if trial.status != "COMPLETED":
+                    continue
+
+                # Create a dictionary with trial information
+                trial_info = {
+                    'trial_id': trial_id,
+                    'score': trial.score,  # validation accuracy
+                    'loss': trial.metrics.get_last_value('val_loss'),
+                    'epochs_trained': len(trial.metrics.metrics.get('loss', {}).get('values', [])),
+                    'status': trial.status,
                 }
-                for trial in trials
-            ])
-            results_df.to_csv(f'{base_path}/Results/mlp_attention/{algorithm}/tuning_results.csv', index=False)
+
+                # Add all hyperparameters
+                trial_info.update(trial.hyperparameters.values)
+
+                trial_data.append(trial_info)
+
+            # Convert to DataFrame and save
+            results_df = pd.DataFrame(trial_data)
+
+            # Sort by score (validation accuracy) in descending order
+            results_df = results_df.sort_values('score', ascending=False)
+
+            # Save to CSV
+            results_path = f'{base_path}/Results/mlp_attention/{algorithm}/'
+            os.makedirs(results_path, exist_ok=True)
+            results_df.to_csv(f'{results_path}/all_trials_results.csv', index=False)
+
+            # Also save a summary of the best trial
+            best_trial = results_df.iloc[0].to_dict()
+            pd.DataFrame([best_trial]).to_csv(f'{results_path}/best_trial_results.csv', index=False)
 
         # Convert HyperParameters to a dictionary compatible with MLPAttentionModel
         best_params = {
@@ -214,7 +253,8 @@ class MLPAttentionModel(ModelBase):
             "optimizer": best_hp.get('optimizer'),
             "loss": 'binary_crossentropy',
             "num_heads": best_hp.get('num_heads'),
-            "key_dim": best_hp.get('key_dim')
+            "key_dim": best_hp.get('key_dim'),
+            "batch_size": best_hp.get('batch_size')
         }
 
         return best_params

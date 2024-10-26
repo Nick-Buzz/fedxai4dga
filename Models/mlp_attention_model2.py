@@ -58,7 +58,7 @@ class MLPAttentionModel2(ModelBase):
 
     def fit(self, X, y, **kwargs):
         early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, verbose=1)
-        history = self.model.fit(X, y, validation_split=0.2, epochs=10, batch_size=512,
+        history = self.model.fit(X, y, validation_split=0.2, epochs=50, batch_size=1024,
                                  callbacks=[early_stopping], **kwargs)
         return history
 
@@ -149,6 +149,15 @@ class MLPAttentionModel2(ModelBase):
 
                 return model
 
+            def fit(self, hp, model, *args, **kwargs):
+                # Define batch size as a hyperparameter
+                batch_size = hp.Choice('batch_size', values=[32, 64, 128, 256, 512, 1024])
+
+                # Update kwargs with the batch_size
+                kwargs['batch_size'] = batch_size
+
+                return model.fit(*args, **kwargs)
+
         tuner_classes = {
             "RandomSearch": RandomSearch,
             "Hyperband": Hyperband,
@@ -162,7 +171,7 @@ class MLPAttentionModel2(ModelBase):
         tuner_params = {
             "hypermodel": MLPHyperModel(),
             "objective": 'val_accuracy',
-            "directory": f"{base_path}/Results/mlp/{algorithm}/",
+            "directory": f"{base_path}/Results/mlp-attention2/{algorithm}/",
             "project_name": f'mlp_hyperparameter_tuning_{algorithm}',
             **kwargs
         }
@@ -170,7 +179,7 @@ class MLPAttentionModel2(ModelBase):
         if algorithm == "Hyperband":
             tuner_params["max_epochs"] = epochs
         else:
-            tuner_params["max_trials"] = kwargs.get('max_trials', 3)
+            tuner_params["max_trials"] = kwargs.get('max_trials', 10)
 
         tuner = tuner_class(**tuner_params)
 
