@@ -197,7 +197,7 @@ class MLPAttentionModel(ModelBase):
         if algorithm == "Hyperband":
             tuner_params["max_epochs"] = epochs
         else:
-            tuner_params["max_trials"] = kwargs.get('max_trials', 10)
+            tuner_params["max_trials"] = kwargs.get('max_trials', 20)
 
         tuner = tuner_class(**tuner_params)
         tuner.search(X, y, epochs=epochs, validation_split=0.2)
