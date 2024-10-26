@@ -202,8 +202,8 @@ def plot_training_curves(model,history):
     loss = history.history['loss']
     val_loss = history.history['val_loss']
 
-    #accuracy = history.history['accuracy']
-    #val_accuracy = history.history['val_accuracy']
+    accuracy = history.history['accuracy']
+    val_accuracy = history.history['val_accuracy']
 
     # Create a figure with 2 subplots
     plt.figure(figsize=(12, 5))

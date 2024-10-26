@@ -6,7 +6,7 @@ from .ModelBase import ModelBase
 
 
 class AutoencoderModel(ModelBase):
-    def __init__(self, hidden_layer_sizes=[35, 25], latent_dim=10, batch_norm=False,
+    def __init__(self, hidden_layer_sizes=[75,100,50,20], latent_dim=10, batch_norm=False,
                  dropout=True, dropout_rate=0.1, activation='relu',
                  optimizer='adam', threshold=0.2):
         self.hidden_layer_sizes = hidden_layer_sizes
@@ -58,7 +58,7 @@ class AutoencoderModel(ModelBase):
         self.model.compile(optimizer=self.optimizer, loss=self.loss)
 
     def fit(self, X, y=None, **kwargs):
-        early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, verbose=1)
+        early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, verbose=1)
         history = self.model.fit(X, X, validation_split=0.2, epochs=20, batch_size=512,
                                  callbacks=[early_stopping], **kwargs)
         return history

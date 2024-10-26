@@ -129,7 +129,7 @@ if __name__ == "__main__":
     #train_data = train_data.sample(frac=0.2)
     # unsupervised-Anomaly Detection
     # SOS ! to proceed with supervised learning comment out the following line !
-    train_data = train_data[train_data["Label"] == 0]
+    # train_data = train_data[train_data["Label"] == 0]
     # supervised-Classification
     X_train = train_data.iloc[:, :-1]
     y_train = train_data.iloc[:, -1:]
@@ -180,8 +180,8 @@ if __name__ == "__main__":
         print(separator)
 
     # Algorithms to consider for interpretations
-    # algorithms = ["xgboost", "mlp","mlp-attention","mlp-attention2,"autoencoder"]
-    algorithms = ["autoencoder"]
+    # algorithms = ["xgboost", "mlp","mlp-attention","mlp-attention2","autoencoder"]
+    algorithms = ["mlp-attention"]
 
     # A dictionary to hold trained models
     model_gs = {}
@@ -207,7 +207,8 @@ if __name__ == "__main__":
             print(f"Failed to create folder Results/ {algorithm}/ ")
 
         # Train the machine/deep learning model
-        model_temp = train_model(X_train, y_train, algorithm)
+
+        model_temp = train_model(X_train, y_train, algorithm, tune=True)
         model_gs[algorithm] = model_temp
 
         # Evaluate the machine/deep learning model

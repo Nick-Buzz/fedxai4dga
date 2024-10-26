@@ -1,10 +1,21 @@
 import pandas as pd
 import tensorflow as tf
-from kerastuner import HyperModel
-from kerastuner.tuners import RandomSearch, Hyperband
+from keras_tuner import RandomSearch, Hyperband, GridSearch, HyperModel
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.metrics import accuracy_score
 
+base_path = r"C:\Users\nbazo\Desktop\Netmode\fedxai4dga\fedxai4dga"
+
+"""
+def build_model(hidden_layers, dropout_rate, activation, optimizer, loss):
+    model = tf.keras.models.Sequential()
+    for units in hidden_layers:
+        model.add(tf.keras.layers.Dense(units, activation=activation))
+        model.add(tf.keras.layers.Dropout(dropout_rate))
+    model.add(tf.keras.layers.Dense(1, activation='sigmoid'))
+    model.compile(loss=loss, optimizer=optimizer, metrics=['accuracy'])
+    return model
+"""
 
 class MLPModel(BaseEstimator, ClassifierMixin):
     def __init__(self, hidden_layers=[300, 200, 200], dropout_rate=0.2, activation='relu',
@@ -17,13 +28,12 @@ class MLPModel(BaseEstimator, ClassifierMixin):
         self.model = None
 
     def build(self):
-        model = tf.keras.models.Sequential()
+        self.model = tf.keras.models.Sequential()
         for units in self.hidden_layers:
-            model.add(tf.keras.layers.Dense(units, activation=self.activation))
-            model.add(tf.keras.layers.Dropout(self.dropout_rate))
-        model.add(tf.keras.layers.Dense(1, activation='sigmoid'))
-        model.compile(loss=self.loss, optimizer=self.optimizer, metrics=['accuracy'])
-        self.model = model
+            self.model.add(tf.keras.layers.Dense(units, activation=self.activation))
+            self.model.add(tf.keras.layers.Dropout(self.dropout_rate))
+        self.model.add(tf.keras.layers.Dense(1, activation='sigmoid'))
+        self.model.compile(loss=self.loss, optimizer=self.optimizer, metrics=['accuracy'])
 
     def fit(self, X, y, **kwargs):
         if self.model is None:
@@ -68,62 +78,58 @@ class MLPModel(BaseEstimator, ClassifierMixin):
             self.model.set_weights(state['model_weights'])
 
     def tune(self, X, y, algorithm="RandomSearch", epochs=50, export_csv=False, **kwargs):
-        """
-        Perform hyperparameter tuning using Keras Tuner.
-
-        Parameters:
-        algorithm (str): The tuning algorithm to use ('RandomSearch' or 'Hyperband').
-        epochs (int): The number of epochs for training.
-        export_csv (bool): Flag to export results to CSV.
-        **kwargs: Additional arguments to pass to the tuner.
-
-        Returns:
-        best_hyperparams: The best hyperparameters found during tuning.
-        """
-
         class MLPHyperModel(HyperModel):
             def build(self, hp):
-                hidden_layers = [hp.Int('units_' + str(i), min_value=100, max_value=500, step=100) for i in range(3)].sort()
-                dropout_rate = hp.Float('dropout_rate', 0.1, 0.5, step=0.1)
-                activation = hp.Choice('activation', values=['relu', 'tanh'])
-                optimizer = hp.Choice('optimizer', values=['adam', 'sgd'])
+                # Create model directly without external function
+                hidden_layers = [hp.Int('units_' + str(i), min_value=100, max_value=500, step=100)
+                                 for i in range(3)]
+                hidden_layers.sort(reverse=True)  # Sort in descending order
 
-                model = MLPModel(hidden_layers=hidden_layers, dropout_rate=dropout_rate,
-                                 activation=activation, optimizer=optimizer)
-                model.build()
-                return model.model
+                model = tf.keras.models.Sequential()
+                for units in hidden_layers:
+                    model.add(tf.keras.layers.Dense(units,
+                                                    activation=hp.Choice('activation', values=['relu', 'tanh'])))
+                    model.add(tf.keras.layers.Dropout(
+                        hp.Float('dropout_rate', 0.1, 0.5, step=0.1)))
+                model.add(tf.keras.layers.Dense(1, activation='sigmoid'))
+                model.compile(
+                    loss='binary_crossentropy',
+                    optimizer=hp.Choice('optimizer', values=['adam', 'sgd']),
+                    metrics=['accuracy']
+                )
+                return model
 
-        # Instantiate the tuner based on the specified algorithm
-        if algorithm == "RandomSearch":
-            tuner = RandomSearch(
-                MLPHyperModel(),
-                objective='val_accuracy',
-                max_trials=10,
-                directory='my_dir',
-                project_name='mlp_hyperparameter_tuning',
-                **kwargs
-            )
-        elif algorithm == "Hyperband":
-            tuner = Hyperband(
-                MLPHyperModel(),
-                objective='val_accuracy',
-                max_epochs=epochs,
-                directory='my_dir',
-                project_name='mlp_hyperparameter_tuning',
-                **kwargs
-            )
+        tuner_classes = {
+            "RandomSearch": RandomSearch,
+            "Hyperband": Hyperband,
+            "GridSearch": GridSearch
+        }
+
+        if algorithm not in tuner_classes:
+            raise ValueError(f"Unsupported algorithm. Choose from {', '.join(tuner_classes.keys())}")
+
+        tuner_class = tuner_classes[algorithm]
+        tuner_params = {
+            "hypermodel": MLPHyperModel(),
+            "objective": 'val_accuracy',
+            "directory": f"{base_path}/Results/mlp/{algorithm}/",
+            "project_name": f'mlp_hyperparameter_tuning_{algorithm}',
+            **kwargs
+        }
+
+        if algorithm == "Hyperband":
+            tuner_params["max_epochs"] = epochs
         else:
-            raise ValueError("Unsupported algorithm. Choose 'RandomSearch' or 'Hyperband'.")
+            tuner_params["max_trials"] = kwargs.get('max_trials', 10)
 
-        # Perform the hyperparameter search
+        tuner = tuner_class(**tuner_params)
+
         tuner.search(X, y, epochs=epochs, validation_split=0.2)
 
-        # Retrieve and return the best hyperparameters
-        best_hyperparams = tuner.get_best_hyperparameters(num_trials=1)[0]
+        best_hp = tuner.get_best_hyperparameters(num_trials=1)[0]
 
-        # Export results to CSV if required
         if export_csv:
-            trials = tuner.oracle.get_best_trials(num_trials=tuner.oracle.trials_count)
+            trials = tuner.oracle.get_best_trials()
             results_df = pd.DataFrame([
                 {
                     'trial': trial.trial_id,
@@ -132,6 +138,21 @@ class MLPModel(BaseEstimator, ClassifierMixin):
                 }
                 for trial in trials
             ])
-            results_df.to_csv('tuning_results.csv', index=False)
+            results_df.to_csv(f'{base_path}/Results/mlp/{algorithm}/tuning_results.csv', index=False)
 
-        return best_hyperparams
+        # Convert HyperParameters to a dictionary compatible with MLPModel
+        best_params = {
+            "hidden_layers": [best_hp.get(f'units_{i}') for i in range(3)],
+            "dropout_rate": best_hp.get('dropout_rate'),
+            "activation": best_hp.get('activation'),
+            "optimizer": best_hp.get('optimizer'),
+            "loss": 'binary_crossentropy'
+        }
+
+        return best_params
+
+# Example usage:
+# model = MLPModel()
+# best_params = model.tune(X, y, algorithm="RandomSearch", epochs=50, export_csv=True)
+# model.set_params(**best_params)
+# model.fit(X, y)

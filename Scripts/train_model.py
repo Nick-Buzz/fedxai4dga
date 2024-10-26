@@ -6,7 +6,7 @@ from Models.AutoEncoder import AutoencoderModel
 from Scripts.Plots.Plotting import plot_training_curves
 
 
-def train_model(X_train, y_train, algorithm):
+def train_model(X_train, y_train, algorithm, tune):
     models = {
         "xgboost": XGBoostModel,
         "mlp": MLPModel,
@@ -22,6 +22,10 @@ def train_model(X_train, y_train, algorithm):
 
     # For MLPAttentionModel, we need to pass features_number
     if "xgboost" not in algorithm:
+        if tune:
+            best_params = model.tune(X_train, y_train, algorithm="RandomSearch", epochs=1, export_csv=True)
+            model.set_params(**best_params).build(features_number=X_train.shape[1])
+
         model.build(features_number=X_train.shape[1])
     else:
         model.build()
