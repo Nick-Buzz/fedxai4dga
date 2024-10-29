@@ -6,7 +6,7 @@ from Models.AutoEncoder import AutoencoderModel
 from Scripts.Plots.Plotting import plot_training_curves
 
 
-def train_model(X_train, y_train, algorithm, tune):
+def train_model(X_train, y_train, algorithm, tune,save_path):
     models = {
         "xgboost": XGBoostModel,
         "mlp": MLPModel,
@@ -34,7 +34,7 @@ def train_model(X_train, y_train, algorithm, tune):
     # on each model
     history = model.fit(X_train, y_train)
 
-    plot_training_curves(algorithm, history)
+    plot_training_curves(algorithm, history,save_path=save_path)
 
     # For XGBoost, the model is directly stored in the class
     # For TensorFlow models, it's stored in the 'model' attribute

@@ -1,6 +1,6 @@
 # Import the necessary libraries (tested for Python 3.9)
 import os
-
+from datetime import datetime
 import matplotlib.pyplot as plt
 import shap
 from pdpbox import pdp
@@ -191,7 +191,7 @@ def explain_with_force_plots(model, model_shap_values, family, test_sample, name
     return None
 
 
-def plot_training_curves(model,history):
+def plot_training_curves(model, history, save_path):
     """
     Plots training and validation loss and accuracy curves.
 
@@ -231,5 +231,7 @@ def plot_training_curves(model,history):
 
     # Show plots
     plt.tight_layout()
-    plt.show()
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    plt.savefig(f'{save_path}/training_curves_{timestamp}.png')
+    plt.close()
 

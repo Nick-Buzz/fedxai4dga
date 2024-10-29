@@ -208,7 +208,7 @@ if __name__ == "__main__":
 
         # Train the machine/deep learning model
 
-        model_temp = train_model(X_train, y_train, algorithm, tune=True)
+        model_temp = train_model(X_train, y_train, algorithm, tune=False, save_path=base_path + f"/Results/{algorithm}/")
         model_gs[algorithm] = model_temp
 
         # Evaluate the machine/deep learning model
@@ -221,7 +221,6 @@ if __name__ == "__main__":
             y_test=y_test,
             algorithm=algorithm,
             metrics=["accuracy", "precision", "recall", "f1", "roc_auc"],
-            cv=5,
             save_path=base_path + f"/Results/{algorithm}/"
         )
         for family in per_category_test.keys():

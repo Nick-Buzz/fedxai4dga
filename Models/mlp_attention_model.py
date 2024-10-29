@@ -18,6 +18,7 @@ class MLPAttentionModel(ModelBase):
                  num_heads=8, key_dim=200,
                  hidden_layers_1=[300, 200, 200],
                  hidden_layers_2=[300, 200]):
+        super().__init__()
         self.dropout_rate = dropout_rate
         self.activation = activation
         self.optimizer = optimizer
@@ -68,7 +69,7 @@ class MLPAttentionModel(ModelBase):
 
     def fit(self, X, y, **kwargs):
         early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, verbose=1)
-        history = self.model.fit(X, y, validation_split=0.2, epochs=10, batch_size=512,
+        history = self.model.fit(X, y, validation_split=0.2, epochs=2, batch_size=1024,
                                  callbacks=[early_stopping], **kwargs)
         return history
 
@@ -133,7 +134,7 @@ class MLPAttentionModel(ModelBase):
 
                 # Attention mechanism - Tune parameters
                 x_reshaped = tf.expand_dims(x, axis=1)
-                num_heads = hp.Int('num_heads', min_value=4, max_value=16, step=4)
+                num_heads = hp.Int('num_heads', min_value=2, max_value=16, step=2)
                 key_dim = hp.Int('key_dim', min_value=100, max_value=300, step=50)
 
                 attention_output = MultiHeadAttention(
@@ -197,7 +198,7 @@ class MLPAttentionModel(ModelBase):
         if algorithm == "Hyperband":
             tuner_params["max_epochs"] = epochs
         else:
-            tuner_params["max_trials"] = kwargs.get('max_trials', 20)
+            tuner_params["max_trials"] = kwargs.get('max_trials', 30)
 
         tuner = tuner_class(**tuner_params)
         tuner.search(X, y, epochs=epochs, validation_split=0.2)
@@ -211,16 +212,13 @@ class MLPAttentionModel(ModelBase):
             trial_data = []
 
             for trial_id, trial in all_trials.items():
-                # Skip trials that didn't complete
-                if trial.status != "COMPLETED":
-                    continue
 
                 # Create a dictionary with trial information
                 trial_info = {
                     'trial_id': trial_id,
                     'score': trial.score,  # validation accuracy
                     'loss': trial.metrics.get_last_value('val_loss'),
-                    'epochs_trained': len(trial.metrics.metrics.get('loss', {}).get('values', [])),
+                    # 'epochs_trained': len(trial.metrics.get('loss', [])),
                     'status': trial.status,
                 }
 
@@ -236,7 +234,7 @@ class MLPAttentionModel(ModelBase):
             results_df = results_df.sort_values('score', ascending=False)
 
             # Save to CSV
-            results_path = f'{base_path}/Results/mlp_attention/{algorithm}/'
+            results_path = f'{base_path}/Results/mlp-attention/{algorithm}/'
             os.makedirs(results_path, exist_ok=True)
             results_df.to_csv(f'{results_path}/all_trials_results.csv', index=False)
 

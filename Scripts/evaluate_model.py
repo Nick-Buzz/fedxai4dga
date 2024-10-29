@@ -9,7 +9,7 @@ import pandas as pd
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix, \
     classification_report, make_scorer
 from sklearn.model_selection import cross_val_score
-
+from Scripts.utils import get_model_architecture
 from Models.mlp_model import MLPModel
 
 # True to print debugging outputs, False to silence the program
@@ -36,7 +36,7 @@ families = ["tranco", "bamital", "banjori", "bedep", "chinad", "conficker", "cor
             "suppobox", "sutra", "symmi", "tinba", "tinynuke", "torpig", "urlzone", "vidro", "virut", "wd"]
 
 
-def evaluate_model(model, X_train, y_train,  X_test, y_test, algorithm, metrics=None, cv=None, save_path=None):
+def evaluate_model(model, X_train, y_train, X_test, y_test, algorithm, metrics=None, save_path=None):
     logger = logging.getLogger(__name__)
     logger.info(f"Evaluating {algorithm} model")
     try:
@@ -51,60 +51,47 @@ def evaluate_model(model, X_train, y_train,  X_test, y_test, algorithm, metrics=
 
             y_true = y_test["Label"].values if algorithm == "xgboost" else y_test.iloc[:, 1].values
 
-            results = {}
+            results = {
+                'model_architecture': get_model_architecture(model, algorithm),
+                'metrics': {},
+                'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+
             if metrics is None:
                 metrics = ["accuracy", "precision", "recall", "f1", "roc_auc"]
-
 
             print(f"\nEvaluation results for {algorithm}:")
             for metric in metrics:
                 if metric == "accuracy":
-                    results["accuracy"] = accuracy_score(y_true, predictions)
-                    print(f"Accuracy: {results['accuracy']:.4f}")
+                    results['metrics']["accuracy"] = accuracy_score(y_true, predictions)
+                    print(f"Accuracy: {results['metrics']['accuracy']:.4f}")
                 elif metric == "precision":
-                    results["precision"] = precision_score(y_true, predictions, average='weighted')
-                    print(f"Precision: {results['precision']:.4f}")
+                    results['metrics']["precision"] = precision_score(y_true, predictions, average='weighted')
+                    print(f"Precision: {results['metrics']['precision']:.4f}")
                 elif metric == "recall":
-                    results["recall"] = recall_score(y_true, predictions, average='weighted')
-                    print(f"Recall: {results['recall']:.4f}")
+                    results['metrics']["recall"] = recall_score(y_true, predictions, average='weighted')
+                    print(f"Recall: {results['metrics']['recall']:.4f}")
                 elif metric == "f1":
-                    results["f1"] = f1_score(y_true, predictions, average='weighted')
-                    print(f"F1 Score: {results['f1']:.4f}")
+                    results['metrics']["f1"] = f1_score(y_true, predictions, average='weighted')
+                    print(f"F1 Score: {results['metrics']['f1']:.4f}")
                 elif metric == "roc_auc":
-                    results["roc_auc"] = roc_auc_score(y_true, predictions)
-                    print(f"ROC AUC: {results['roc_auc']:.4f}")
+                    results['metrics']["roc_auc"] = roc_auc_score(y_true, predictions)
+                    print(f"ROC AUC: {results['metrics']['roc_auc']:.4f}")
 
-            results["confusion_matrix"] = confusion_matrix(y_true, predictions)
+            results['metrics']["confusion_matrix"] = confusion_matrix(y_true, predictions)
             print("\nConfusion Matrix:")
-            print(results["confusion_matrix"])
+            print(results['metrics']["confusion_matrix"])
 
-            results["classification_report"] = classification_report(y_true, predictions)
+            results['metrics']["classification_report"] = classification_report(y_true, predictions)
             print("\nClassification Report:")
-            print(results["classification_report"])
+            print(results['metrics']["classification_report"])
 
             # Merge X_train and X_test
             X = pd.concat([X_train, X_test], axis=0, ignore_index=True)
 
             # Merge y_train and y_test[1]
-            # Assuming y_test is a DataFrame and we want the second column
             y = pd.concat([y_train, y_test.iloc[:, 1]], axis=0, ignore_index=True)
             y = y.iloc[:, 0]
-
-            if cv:
-                if isinstance(model, tf.keras.Model):
-                    # If a Keras model was passed, wrap it in MLPModel
-                    wrapped_model = MLPModel()
-                    wrapped_model.model = model
-                    model = wrapped_model
-
-                cv_scores = cross_val_score(model, X, y, cv=cv)
-
-                results["cross_val_scores"] = cv_scores
-                results["cross_val_mean"] = np.mean(cv_scores)
-                results["cross_val_std"] = np.std(cv_scores)
-
-                print(f"\nCross-validation scores: {cv_scores}")
-                print(f"Mean CV score: {results['cross_val_mean']:.4f} (+/- {results['cross_val_std']:.4f})")
 
             if save_path:
                 try:
@@ -116,12 +103,22 @@ def evaluate_model(model, X_train, y_train,  X_test, y_test, algorithm, metrics=
                     # Convert numpy arrays to lists for JSON serialization
                     serializable_results = {}
                     for key, value in results.items():
-                        if isinstance(value, np.ndarray):
-                            serializable_results[key] = value.tolist()
-                        elif isinstance(value, np.float64):
-                            serializable_results[key] = float(value)
+                        if isinstance(value, dict):
+                            serializable_results[key] = {}
+                            for k, v in value.items():
+                                if isinstance(v, np.ndarray):
+                                    serializable_results[key][k] = v.tolist()
+                                elif isinstance(v, np.float64):
+                                    serializable_results[key][k] = float(v)
+                                else:
+                                    serializable_results[key][k] = v
                         else:
-                            serializable_results[key] = value
+                            if isinstance(value, np.ndarray):
+                                serializable_results[key] = value.tolist()
+                            elif isinstance(value, np.float64):
+                                serializable_results[key] = float(value)
+                            else:
+                                serializable_results[key] = value
 
                     # Save the results to a JSON file
                     with open(full_path, 'w') as f:
