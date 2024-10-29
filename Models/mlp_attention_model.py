@@ -69,7 +69,7 @@ class MLPAttentionModel(ModelBase):
 
     def fit(self, X, y, **kwargs):
         early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, verbose=1)
-        history = self.model.fit(X, y, validation_split=0.2, epochs=2, batch_size=1024,
+        history = self.model.fit(X, y, validation_split=0.2, epochs=50, batch_size=1024,
                                  callbacks=[early_stopping], **kwargs)
         return history
 
@@ -198,7 +198,7 @@ class MLPAttentionModel(ModelBase):
         if algorithm == "Hyperband":
             tuner_params["max_epochs"] = epochs
         else:
-            tuner_params["max_trials"] = kwargs.get('max_trials', 30)
+            tuner_params["max_trials"] = kwargs.get('max_trials', 15)
 
         tuner = tuner_class(**tuner_params)
         tuner.search(X, y, epochs=epochs, validation_split=0.2)

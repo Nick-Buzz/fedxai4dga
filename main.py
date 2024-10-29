@@ -208,7 +208,7 @@ if __name__ == "__main__":
 
         # Train the machine/deep learning model
 
-        model_temp = train_model(X_train, y_train, algorithm, tune=False, save_path=base_path + f"/Results/{algorithm}/")
+        model_temp = train_model(X_train, y_train, algorithm, tune=True, save_path=base_path + f"/Results/{algorithm}/")
         model_gs[algorithm] = model_temp
 
         # Evaluate the machine/deep learning model
