@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import tensorflow as tf
 from keras_tuner import RandomSearch, Hyperband, GridSearch, HyperModel
 from sklearn.metrics import accuracy_score
@@ -108,7 +110,7 @@ class MLPAttentionModel(ModelBase):
             self.model = tf.keras.models.Sequential.from_config(state['model_config'])
             self.model.set_weights(state['model_weights'])
 
-    def tune(self, X, y, algorithm="RandomSearch", epochs=50, export_csv=True, **kwargs):
+    def tune(self, X, y, algorithm="GridSearch", epochs=25, export_csv=True, **kwargs):
         features_number = X.shape[1]
 
         class MLPAttentionHyperModel(HyperModel):
@@ -119,7 +121,7 @@ class MLPAttentionModel(ModelBase):
                 # First MLP module - Tune architecture
                 x = inputs
                 hidden_layers_1 = [
-                    hp.Int(f'units_1_{i}', min_value=100, max_value=400, step=100)
+                    hp.Int(f'units_1_{i}', min_value=50, max_value=400, step=50)
                     for i in range(3)
                 ]
                 hidden_layers_1.sort(reverse=True)  # Sort in descending order
@@ -127,7 +129,7 @@ class MLPAttentionModel(ModelBase):
                 for i, units in enumerate(hidden_layers_1):
                     x = Dense(
                         units,
-                        activation=hp.Choice('activation', values=['relu', 'tanh'])
+                        activation='relu'
                         if i < len(hidden_layers_1) - 1 else 'linear'
                     )(x)
                     x = Dropout(hp.Float('dropout_rate', 0.1, 0.5, step=0.1))(x)
@@ -148,13 +150,13 @@ class MLPAttentionModel(ModelBase):
                 # Second MLP module - Tune architecture
                 x = combined
                 hidden_layers_2 = [
-                    hp.Int(f'units_2_{i}', min_value=100, max_value=400, step=100)
+                    hp.Int(f'units_2_{i}', min_value=50, max_value=400, step=50)
                     for i in range(2)
                 ]
                 hidden_layers_2.sort(reverse=True)
 
                 for units in hidden_layers_2:
-                    x = Dense(units, activation=hp.Choice('activation', values=['relu', 'tanh']))(x)
+                    x = Dense(units, activation='relu')(x)
 
                 outputs = Dense(1, activation='sigmoid')(x)
 
@@ -170,7 +172,7 @@ class MLPAttentionModel(ModelBase):
 
             def fit(self, hp, model, *args, **kwargs):
                 # Define batch size as a hyperparameter
-                batch_size = hp.Choice('batch_size', values=[32, 64, 128, 256, 512, 1024])
+                batch_size = hp.Choice('batch_size', values=[256, 512, 1024])
 
                 # Update kwargs with the batch_size
                 kwargs['batch_size'] = batch_size
@@ -189,16 +191,17 @@ class MLPAttentionModel(ModelBase):
         tuner_class = tuner_classes[algorithm]
         tuner_params = {
             "hypermodel": MLPAttentionHyperModel(),
-            "objective": 'val_accuracy',
+            "objective": 'accuracy',
             "directory": f"{base_path}/Results/mlp-attention/{algorithm}/",
-            "project_name": f'mlp_attention_hyperparameter_tuning_{algorithm}',
+            "project_name": f'mlp_attention_hyperparameter_tuning_{algorithm}'
+                            f'{datetime.now().strftime("%Y-%m-%d_%H%M%S")}',
             **kwargs
         }
 
         if algorithm == "Hyperband":
             tuner_params["max_epochs"] = epochs
         else:
-            tuner_params["max_trials"] = kwargs.get('max_trials', 15)
+            tuner_params["max_trials"] = kwargs.get('max_trials', 20)
 
         tuner = tuner_class(**tuner_params)
         tuner.search(X, y, epochs=epochs, validation_split=0.2)
@@ -236,18 +239,21 @@ class MLPAttentionModel(ModelBase):
             # Save to CSV
             results_path = f'{base_path}/Results/mlp-attention/{algorithm}/'
             os.makedirs(results_path, exist_ok=True)
-            results_df.to_csv(f'{results_path}/all_trials_results.csv', index=False)
+            results_df.to_csv(f'{results_path}/'
+                              f'all_trials_results{datetime.now().strftime("%Y-%m-%d_%H%M%S")}.csv',
+                              index=False)
 
             # Also save a summary of the best trial
             best_trial = results_df.iloc[0].to_dict()
-            pd.DataFrame([best_trial]).to_csv(f'{results_path}/best_trial_results.csv', index=False)
+            pd.DataFrame([best_trial]).to_csv(f'{results_path}/'
+                                              f'best_trial_results{datetime.now().strftime("%Y-%m-%d_%H%M%S")}.csv',
+                                              index=False)
 
         # Convert HyperParameters to a dictionary compatible with MLPAttentionModel
         best_params = {
             "hidden_layers_1": [best_hp.get(f'units_1_{i}') for i in range(3)],
             "hidden_layers_2": [best_hp.get(f'units_2_{i}') for i in range(2)],
             "dropout_rate": best_hp.get('dropout_rate'),
-            "activation": best_hp.get('activation'),
             "optimizer": best_hp.get('optimizer'),
             "loss": 'binary_crossentropy',
             "num_heads": best_hp.get('num_heads'),
