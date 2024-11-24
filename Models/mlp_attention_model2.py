@@ -124,7 +124,7 @@ class MLPAttentionModel2(ModelBase):
             setattr(self, parameter, value)
         return self
 
-    def tune(self, X, y, algorithm="RandomSearch", epochs=5, export_csv=False, **kwargs):
+    def tune(self, X, y, algorithm="RandomSearch", epochs=50, export_csv=False, **kwargs):
         """
         Perform hyperparameter tuning using specified search algorithm.
 
@@ -224,15 +224,16 @@ class MLPAttentionModel2(ModelBase):
             "hypermodel": MLPAttentionHyperModel2(),
             "objective": 'val_accuracy',
             "directory": f"{base_path}/Results/mlp-attention2/{algorithm}/",
-            "project_name": f'mlp_hyperparameter_tuning_{algorithm}'
-                            f'{datetime.now().strftime("%Y-%m-%d_%H%M%S")}',
+            "project_name": "mlp_hyperparameter_tuning_RandomSearch2024-10-30_202446",
+#"project_name": f'mlp_hyperparameter_tuning_{algorithm}'
+#                f'{datetime.now().strftime("%Y-%m-%d_%H%M%S")}',
             **kwargs
         }
 
         if algorithm == "Hyperband":
             tuner_params["max_epochs"] = epochs
         else:
-            tuner_params["max_trials"] = kwargs.get('max_trials', 2)
+            tuner_params["max_trials"] = kwargs.get('max_trials', 30)
 
         tuner = tuner_class(**tuner_params)
 

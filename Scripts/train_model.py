@@ -23,7 +23,7 @@ def train_model(X_train, y_train, algorithm, tune,save_path):
     # For MLPAttentionModel, we need to pass features_number
     if "xgboost" not in algorithm:
         if tune:
-            best_params = model.tune(X_train, y_train, algorithm="RandomSearch", epochs=1, export_csv=True)
+            best_params = model.tune(X_train, y_train)
             model.set_params(**best_params).build(features_number=X_train.shape[1])
 
         model.build(features_number=X_train.shape[1])
