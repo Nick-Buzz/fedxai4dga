@@ -1,0 +1,11 @@
+# generated data (DGArchive-derived files must never be committed)
+Data/Processed/
+Data/Raw/*
+!Data/Raw/tranco_top100k.txt
+!Data/Raw/tranco_remaining.txt
+!Data/Raw/public_suffixes_list_v2.csv
+Results/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
